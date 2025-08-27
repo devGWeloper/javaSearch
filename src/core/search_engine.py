@@ -312,24 +312,66 @@ class SearchEngine:
             # 중복되지 않는 파일명 생성
             unique_output_file = self._generate_unique_filename(output_file)
             
-            # 데이터 변환을 최적화
-            data = [
-                [result.file_path, result.file_name, result.line_number, 
-                 result.content, result.match_text]
-                for result in results
-            ]
+            # 메모리 효율적인 데이터 변환 (청크 단위로 처리)
+            chunk_size = 1000  # 한 번에 처리할 행 수
+            total_rows = len(results)
             
-            print(f"데이터 변환 완료: {len(data)}행")
+            print(f"데이터 변환 시작: 총 {total_rows}행을 {chunk_size}행씩 처리")
             
-            # DataFrame 생성
-            df = pd.DataFrame(data, columns=["File Path", "File Name", "Line", "Content", "Match"])
+            # 청크 단위로 데이터 처리하여 메모리 사용량 최적화
+            all_data = []
+            for i in range(0, total_rows, chunk_size):
+                chunk_end = min(i + chunk_size, total_rows)
+                chunk_results = results[i:chunk_end]
+                
+                # 청크 데이터 변환
+                chunk_data = [
+                    [result.file_path, result.file_name, result.line_number, 
+                     result.content[:500], result.match_text]  # 내용 길이 제한으로 메모리 절약
+                    for result in chunk_results
+                ]
+                all_data.extend(chunk_data)
+                
+                print(f"청크 처리 완료: {i+1}~{chunk_end}/{total_rows}")
+                
+                # 메모리 정리
+                del chunk_data
+                del chunk_results
+            
+            print(f"데이터 변환 완료: {len(all_data)}행")
+            
+            # DataFrame 생성 (메모리 효율적)
+            df = pd.DataFrame(all_data, columns=["File Path", "File Name", "Line", "Content", "Match"])
             
             print(f"DataFrame 생성 완료: {df.shape}")
             
-            # Excel 파일로 저장
-            df.to_excel(unique_output_file, index=False, engine='openpyxl')
+            # 메모리 정리
+            del all_data
+            
+            # Excel 파일로 저장 (메모리 효율적)
+            with pd.ExcelWriter(unique_output_file, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Search Results')
+                
+                # 워크시트 최적화
+                worksheet = writer.sheets['Search Results']
+                
+                # 컬럼 너비 자동 조정
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)  # 최대 50자로 제한
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
             
             print(f"Excel 파일 저장 완료: {unique_output_file}")
+            
+            # DataFrame 메모리 정리
+            del df
             
             # 실제 저장된 파일 경로 반환을 위해 output_file 업데이트
             if unique_output_file != output_file:
@@ -340,6 +382,10 @@ class SearchEngine:
         except ImportError as e:
             print(f"필요한 패키지가 설치되지 않았습니다: {e}")
             print("pandas와 openpyxl을 설치해주세요: pip install pandas openpyxl")
+            return False
+        except MemoryError as e:
+            print(f"메모리 부족 오류: {e}")
+            print("검색 결과가 너무 많습니다. 더 작은 단위로 나누어 내보내기를 시도해주세요.")
             return False
         except Exception as e:
             print(f"Excel 내보내기 오류: {e}")

@@ -459,6 +459,11 @@ class JavaSearchApp:
             messagebox.showwarning("경고", "내보낼 결과가 없습니다.")
             return
         
+        # 내보내기 중 중복 실행 방지
+        if hasattr(self, 'is_exporting') and self.is_exporting:
+            messagebox.showwarning("경고", "이미 내보내기가 진행 중입니다.")
+            return
+        
         # 기본 파일명 설정
         default_filename = "search_results.xlsx"
         output_file = self.output_entry.get().strip()
@@ -468,48 +473,147 @@ class JavaSearchApp:
             output_file += '.xlsx'
         
         # 파일 저장 대화상자 (macOS 호환성 고려)
+        # confirmoverwrite=False로 설정하여 자동으로 _1, _2 붙이기
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
             initialfile=output_file,  # macOS에서는 initialfile 사용
-            title="Excel 파일로 저장"
+            title="Excel 파일로 저장 (중복 시 자동으로 _1, _2 추가)",
+            confirmoverwrite=False  # 자동으로 _1, _2 붙이기 (덮어쓰기 확인 안함)
         )
         
         if file_path:
-            try:
-                # 파일명 중복 확인 및 자동 변경
+            # 파일명 중복 확인 및 사용자 안내
+            if Path(file_path).exists():
+                # 사용자에게 자동 파일명 변경에 대한 안내
+                info_result = messagebox.askyesno(
+                    "파일명 중복 안내",
+                    f"📁 '{Path(file_path).name}' 파일이 이미 존재합니다.\n\n"
+                    f"💡 기존 파일을 덮어쓰지 않고, 자동으로 '_1', '_2'를 붙여서\n"
+                    f"새로운 파일을 생성합니다.\n\n"
+                    f"계속 진행하시겠습니까?",
+                    icon='info'
+                )
+                
+                if not info_result:
+                    # 사용자가 취소한 경우
+                    self.export_btn.configure(state="normal", text=f"📊 Excel 내보내기 ({len(self.search_results)}건)")
+                    return
+            
+            # 내보내기 상태 설정
+            self.is_exporting = True
+            self.export_btn.configure(state="disabled", text="📊 내보내기 중...")
+            
+            # 진행률 표시
+            self.show_export_progress()
+            
+            # 비동기로 Excel 내보내기 실행
+            export_thread = threading.Thread(
+                target=self._export_worker,
+                args=(file_path, output_file),
+                daemon=True
+            )
+            export_thread.start()
+    
+    def _export_worker(self, file_path, output_file):
+        """Excel 내보내기 워커 스레드"""
+        try:
+            # 검색 엔진을 통해 Excel 내보내기 실행
+            success = self.search_engine.export_to_excel(self.search_results, file_path)
+            
+            # UI 업데이트는 메인 스레드에서 실행
+            self.root.after(0, self._export_completed, success, file_path, output_file)
+            
+        except Exception as e:
+            # 오류 발생 시 UI 업데이트
+            self.root.after(0, self._export_error, str(e))
+    
+    def _export_completed(self, success, file_path, output_file):
+        """Excel 내보내기 완료 처리"""
+        try:
+            # 진행률 숨김
+            self.hide_export_progress()
+            
+            if success:
+                # 실제 저장된 파일 경로 확인
+                actual_file_path = self._get_actual_saved_file_path(file_path)
                 original_filename = Path(file_path).name
                 
-                # 검색 엔진을 통해 Excel 내보내기 실행
-                success = self.search_engine.export_to_excel(self.search_results, file_path)
-                
-                if success:
-                    # 실제 저장된 파일 경로 확인
-                    actual_file_path = self._get_actual_saved_file_path(file_path)
-                    
-                    if actual_file_path != file_path:
-                        messagebox.showinfo("내보내기 완료", 
-                            f"파일명이 중복되어 자동으로 변경되었습니다:\n"
-                            f"원본: {original_filename}\n"
-                            f"변경: {Path(actual_file_path).name}\n\n"
-                            f"저장 위치: {actual_file_path}")
-                    else:
-                        messagebox.showinfo("내보내기 완료", f"결과가 성공적으로 저장되었습니다:\n{file_path}")
-                    
-                    # 성공적으로 저장된 파일 경로를 output_entry에 업데이트
-                    self.output_entry.delete(0, tk.END)
-                    self.output_entry.insert(0, str(Path(actual_file_path).name))
-                    
-                    # 내보내기 완료 후 버튼 상태 업데이트
-                    self.export_btn.configure(text=f"📊 Excel 내보내기 ({len(self.search_results)}건) - 완료!")
-                    self.root.after(2000, lambda: self.export_btn.configure(text=f"📊 Excel 내보내기 ({len(self.search_results)}건)"))
-                    
+                if actual_file_path != file_path:
+                    messagebox.showinfo("내보내기 완료", 
+                        f"📁 파일명이 중복되어 자동으로 변경되었습니다:\n\n"
+                        f"📝 원본 파일명: {original_filename}\n"
+                        f"🔄 변경된 파일명: {Path(actual_file_path).name}\n\n"
+                        f"💾 저장 위치: {actual_file_path}\n\n"
+                        f"💡 기존 파일은 그대로 유지되며, 새로운 파일이 생성되었습니다.")
                 else:
-                    messagebox.showerror("오류", "Excel 파일 저장 중 오류가 발생했습니다.")
-                    
-            except Exception as e:
-                messagebox.showerror("오류", f"Excel 내보내기 중 예외가 발생했습니다:\n{str(e)}")
-                print(f"Excel 내보내기 오류 상세: {e}")
+                    messagebox.showinfo("내보내기 완료", 
+                        f"✅ Excel 내보내기가 완료되었습니다!\n\n"
+                        f"📁 저장 위치: {file_path}\n"
+                        f"📊 총 {len(self.search_results)}건의 검색 결과가 저장되었습니다.")
+                
+                # 성공적으로 저장된 파일 경로를 output_entry에 업데이트
+                self.output_entry.delete(0, tk.END)
+                self.output_entry.insert(0, str(Path(actual_file_path).name))
+                
+                # 내보내기 완료 후 버튼 상태 업데이트
+                self.export_btn.configure(text=f"📊 Excel 내보내기 ({len(self.search_results)}건) - 완료!")
+                self.root.after(2000, lambda: self.export_btn.configure(text=f"📊 Excel 내보내기 ({len(self.search_results)}건)"))
+                
+            else:
+                messagebox.showerror("오류", "Excel 파일 저장 중 오류가 발생했습니다.")
+                self.export_btn.configure(state="normal", text=f"📊 Excel 내보내기 ({len(self.search_results)}건)")
+                
+        except Exception as e:
+            messagebox.showerror("오류", f"내보내기 완료 처리 중 오류가 발생했습니다:\n{str(e)}")
+            print(f"내보내기 완료 처리 오류: {e}")
+        finally:
+            # 내보내기 상태 해제
+            self.is_exporting = False
+            self.export_btn.configure(state="normal")
+    
+    def _export_error(self, error_message):
+        """Excel 내보내기 오류 처리"""
+        try:
+            # 진행률 숨김
+            self.hide_export_progress()
+            
+            messagebox.showerror("오류", f"Excel 내보내기 중 오류가 발생했습니다:\n{error_message}")
+            print(f"Excel 내보내기 오류 상세: {error_message}")
+            
+        except Exception as e:
+            print(f"오류 처리 중 추가 오류: {e}")
+        finally:
+            # 내보내기 상태 해제
+            self.is_exporting = False
+            self.export_btn.configure(state="normal", text=f"📊 Excel 내보내기 ({len(self.search_results)}건)")
+    
+    def show_export_progress(self):
+        """내보내기 진행률 표시"""
+        # 진행률 프레임 표시
+        self.progress_frame.pack(fill="x", padx=10, pady=5, before=self.results_tree.master)
+        self.progress_bar.set(0)
+        self.progress_label.configure(text="Excel 파일 생성 중...")
+        
+        # 진행률 애니메이션
+        self._animate_progress()
+    
+    def hide_export_progress(self):
+        """내보내기 진행률 숨김"""
+        self.progress_frame.pack_forget()
+    
+    def _animate_progress(self):
+        """진행률 애니메이션"""
+        if hasattr(self, 'is_exporting') and self.is_exporting:
+            # 진행률을 0.1씩 증가시키며 애니메이션
+            current = self.progress_bar.get()
+            if current < 0.9:
+                self.progress_bar.set(current + 0.1)
+            else:
+                self.progress_bar.set(0.1)
+            
+            # 100ms마다 애니메이션 업데이트
+            self.root.after(100, self._animate_progress)
     
     def _get_actual_saved_file_path(self, original_path: str) -> str:
         """실제로 저장된 파일 경로를 찾습니다"""
@@ -616,7 +720,7 @@ class JavaSearchApp:
         if self.export_btn.cget("state") == "disabled":
             tooltip_text = "검색 결과가 없습니다. 먼저 검색을 실행해주세요."
         else:
-            tooltip_text = f"검색 결과 {len(self.search_results)}건을 Excel 파일로 내보냅니다."
+            tooltip_text = f"검색 결과 {len(self.search_results)}건을 Excel 파일로 내보냅니다.\n\n💡 파일명이 중복되면 자동으로 _1, _2를 붙여서 새 파일을 생성합니다."
         
         # 툴팁 위치 계산
         x = self.export_btn.winfo_rootx() + self.export_btn.winfo_width() // 2
