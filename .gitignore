@@ -145,7 +145,6 @@ ehthumbs.db
 Thumbs.db
 
 # Application specific
-config.json
 search_results.xlsx
 *.xlsx
 *.xls

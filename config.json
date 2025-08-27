@@ -1,0 +1,24 @@
+{
+  "search_directory": "",
+  "keyword": "",
+  "use_regex": true,
+  "case_sensitive": false,
+  "whole_word": false,
+  "file_extensions": [
+    ".java",
+    ".xml",
+    ".properties"
+  ],
+  "exclude_patterns": [
+    "*/target/*",
+    "*/build/*",
+    "*/.git/*",
+    "*/node_modules/*"
+  ],
+  "file_encoding": "utf-8",
+  "output_file": "search_results.xlsx",
+  "recent_searches": [],
+  "recent_directories": [],
+  "window_geometry": "800x600+208+132",
+  "theme": "dark"
+}
