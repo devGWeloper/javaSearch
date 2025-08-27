@@ -205,7 +205,14 @@ class JavaSearchApp:
         self.export_btn = ctk.CTkButton(button_frame, text="📊 Excel 내보내기", 
                                        command=self.export_results,
                                        state="disabled",
-                                       height=40)
+                                       height=40,
+                                       fg_color="#2d5a2d",  # 초록색 계열로 변경
+                                       hover_color="#1e3a1e")
+        
+        # Excel 내보내기 버튼에 툴팁 추가
+        self.export_tooltip = None
+        self.export_btn.bind("<Enter>", self.show_export_tooltip)
+        self.export_btn.bind("<Leave>", self.hide_export_tooltip)
         self.export_btn.pack(side="right", padx=5)
         
         self.clear_btn = ctk.CTkButton(button_frame, text="🗑️ 결과 지우기", 
@@ -416,9 +423,10 @@ class JavaSearchApp:
         self.progress_frame.pack_forget()
         
         if results:
-            self.export_btn.configure(state="normal")
-            messagebox.showinfo("검색 완료", f"검색이 완료되었습니다.\n총 {len(results)}건의 결과를 찾았습니다.")
+            self.export_btn.configure(state="normal", text=f"📊 Excel 내보내기 ({len(results)}건)")
+            messagebox.showinfo("검색 완료", f"검색이 완료되었습니다.\n총 {len(results)}건의 결과를 찾았습니다.\n\nExcel 내보내기 버튼을 클릭하여 결과를 저장할 수 있습니다.")
         else:
+            self.export_btn.configure(state="disabled", text="📊 Excel 내보내기")
             messagebox.showinfo("검색 완료", "검색 결과가 없습니다.")
     
     def _search_error(self, error_message):
@@ -443,7 +451,7 @@ class JavaSearchApp:
         self.results_tree.delete(*self.results_tree.get_children())
         self.search_results.clear()
         self.count_label.configure(text="0건")
-        self.export_btn.configure(state="disabled")
+        self.export_btn.configure(state="disabled", text="📊 Excel 내보내기")
     
     def export_results(self):
         """Excel로 내보내기"""
@@ -451,33 +459,57 @@ class JavaSearchApp:
             messagebox.showwarning("경고", "내보낼 결과가 없습니다.")
             return
         
+        # 기본 파일명 설정
+        default_filename = "search_results.xlsx"
         output_file = self.output_entry.get().strip()
         if not output_file:
-            output_file = "search_results.xlsx"
+            output_file = default_filename
+        elif not output_file.endswith('.xlsx'):
+            output_file += '.xlsx'
         
-        # 파일 저장 대화상자
+        # 파일 저장 대화상자 (macOS 호환성 고려)
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-            initialvalue=output_file
+            initialfile=output_file,  # macOS에서는 initialfile 사용
+            title="Excel 파일로 저장"
         )
         
         if file_path:
-            # 파일명 중복 확인 및 자동 변경
-            original_filename = Path(file_path).name
-            if self.search_engine.export_to_excel(self.search_results, file_path):
-                # 실제 저장된 파일 경로 확인
-                actual_file_path = self._get_actual_saved_file_path(file_path)
-                if actual_file_path != file_path:
-                    messagebox.showinfo("내보내기 완료", 
-                        f"파일명이 중복되어 자동으로 변경되었습니다:\n"
-                        f"원본: {original_filename}\n"
-                        f"변경: {Path(actual_file_path).name}\n\n"
-                        f"저장 위치: {actual_file_path}")
+            try:
+                # 파일명 중복 확인 및 자동 변경
+                original_filename = Path(file_path).name
+                
+                # 검색 엔진을 통해 Excel 내보내기 실행
+                success = self.search_engine.export_to_excel(self.search_results, file_path)
+                
+                if success:
+                    # 실제 저장된 파일 경로 확인
+                    actual_file_path = self._get_actual_saved_file_path(file_path)
+                    
+                    if actual_file_path != file_path:
+                        messagebox.showinfo("내보내기 완료", 
+                            f"파일명이 중복되어 자동으로 변경되었습니다:\n"
+                            f"원본: {original_filename}\n"
+                            f"변경: {Path(actual_file_path).name}\n\n"
+                            f"저장 위치: {actual_file_path}")
+                    else:
+                        messagebox.showinfo("내보내기 완료", f"결과가 성공적으로 저장되었습니다:\n{file_path}")
+                    
+                    # 성공적으로 저장된 파일 경로를 output_entry에 업데이트
+                    self.output_entry.delete(0, tk.END)
+                    self.output_entry.insert(0, str(Path(actual_file_path).name))
+                    
+                    # 내보내기 완료 후 버튼 상태 업데이트
+                    self.export_btn.configure(text=f"📊 Excel 내보내기 ({len(self.search_results)}건) - 완료!")
+                    self.root.after(2000, lambda: self.export_btn.configure(text=f"📊 Excel 내보내기 ({len(self.search_results)}건)"))
+                    
                 else:
-                    messagebox.showinfo("내보내기 완료", f"결과가 성공적으로 저장되었습니다:\n{file_path}")
-            else:
-                messagebox.showerror("오류", "Excel 파일 저장 중 오류가 발생했습니다.")
+                    messagebox.showerror("오류", "Excel 파일 저장 중 오류가 발생했습니다.")
+                    
+            except Exception as e:
+                messagebox.showerror("오류", f"Excel 내보내기 중 예외가 발생했습니다:\n{str(e)}")
+                print(f"Excel 내보내기 오류 상세: {e}")
     
     def _get_actual_saved_file_path(self, original_path: str) -> str:
         """실제로 저장된 파일 경로를 찾습니다"""
@@ -578,6 +610,42 @@ class JavaSearchApp:
                 self.root.clipboard_append(result.file_path)
                 messagebox.showinfo("복사 완료", "파일 경로가 클립보드에 복사되었습니다.")
                 break
+    
+    def show_export_tooltip(self, event):
+        """Excel 내보내기 버튼 툴팁 표시"""
+        if self.export_btn.cget("state") == "disabled":
+            tooltip_text = "검색 결과가 없습니다. 먼저 검색을 실행해주세요."
+        else:
+            tooltip_text = f"검색 결과 {len(self.search_results)}건을 Excel 파일로 내보냅니다."
+        
+        # 툴팁 위치 계산
+        x = self.export_btn.winfo_rootx() + self.export_btn.winfo_width() // 2
+        y = self.export_btn.winfo_rooty() - 30
+        
+        # 기존 툴팁 제거
+        if self.export_tooltip:
+            self.export_tooltip.destroy()
+        
+        # 새 툴팁 생성
+        self.export_tooltip = tk.Toplevel(self.root)
+        self.export_tooltip.wm_overrideredirect(True)
+        self.export_tooltip.wm_geometry(f"+{x}+{y}")
+        
+        # 툴팁 스타일
+        tooltip_label = tk.Label(self.export_tooltip, text=tooltip_text, 
+                                bg="#2b2b2b", fg="white", 
+                                relief="solid", borderwidth=1,
+                                font=("Arial", 10))
+        tooltip_label.pack(padx=5, pady=3)
+        
+        # 자동 숨김 (이벤트 없이 호출)
+        self.root.after(3000, lambda: self.hide_export_tooltip())
+    
+    def hide_export_tooltip(self, event=None):
+        """Excel 내보내기 버튼 툴팁 숨김"""
+        if self.export_tooltip:
+            self.export_tooltip.destroy()
+            self.export_tooltip = None
     
     def load_settings(self):
         """설정 로드"""

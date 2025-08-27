@@ -304,7 +304,10 @@ class SearchEngine:
         """검색 결과를 Excel 파일로 내보내기 (최적화된 버전)"""
         try:
             if not results:
+                print("내보낼 검색 결과가 없습니다.")
                 return False
+            
+            print(f"Excel 내보내기 시작: {len(results)}건의 결과를 {output_file}에 저장")
             
             # 중복되지 않는 파일명 생성
             unique_output_file = self._generate_unique_filename(output_file)
@@ -316,8 +319,17 @@ class SearchEngine:
                 for result in results
             ]
             
+            print(f"데이터 변환 완료: {len(data)}행")
+            
+            # DataFrame 생성
             df = pd.DataFrame(data, columns=["File Path", "File Name", "Line", "Content", "Match"])
+            
+            print(f"DataFrame 생성 완료: {df.shape}")
+            
+            # Excel 파일로 저장
             df.to_excel(unique_output_file, index=False, engine='openpyxl')
+            
+            print(f"Excel 파일 저장 완료: {unique_output_file}")
             
             # 실제 저장된 파일 경로 반환을 위해 output_file 업데이트
             if unique_output_file != output_file:
@@ -325,8 +337,14 @@ class SearchEngine:
             
             return True
             
+        except ImportError as e:
+            print(f"필요한 패키지가 설치되지 않았습니다: {e}")
+            print("pandas와 openpyxl을 설치해주세요: pip install pandas openpyxl")
+            return False
         except Exception as e:
             print(f"Excel 내보내기 오류: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def get_performance_stats(self) -> Dict[str, Any]:

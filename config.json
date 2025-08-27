@@ -1,6 +1,6 @@
 {
-  "search_directory": "",
-  "keyword": "",
+  "search_directory": "/Users/kimgiwoong/Desktop/Side",
+  "keyword": "mes",
   "use_regex": true,
   "case_sensitive": false,
   "whole_word": false,
@@ -17,8 +17,12 @@
   ],
   "file_encoding": "utf-8",
   "output_file": "search_results.xlsx",
-  "recent_searches": [],
-  "recent_directories": [],
-  "window_geometry": "800x600+208+132",
+  "recent_searches": [
+    "mes"
+  ],
+  "recent_directories": [
+    "/Users/kimgiwoong/Desktop/Side"
+  ],
+  "window_geometry": "1708x944+0+38",
   "theme": "dark"
 }
