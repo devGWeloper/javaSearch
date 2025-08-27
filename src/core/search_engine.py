@@ -31,7 +31,26 @@ class SearchEngine:
         # 정규식 패턴 캐시
         self.pattern_cache = {}
         self.cache_size_limit = 100
+    
+    def _generate_unique_filename(self, base_path: str) -> str:
+        """중복되지 않는 파일명 생성"""
+        path = Path(base_path)
+        if not path.exists():
+            return base_path
         
+        # 파일명과 확장자 분리
+        stem = path.stem
+        suffix = path.suffix
+        parent = path.parent
+        
+        counter = 1
+        while True:
+            new_filename = f"{stem}_{counter}{suffix}"
+            new_path = parent / new_filename
+            if not new_path.exists():
+                return str(new_path)
+            counter += 1
+    
     def _get_cached_pattern(self, keyword: str, flags: int) -> re.Pattern:
         """정규식 패턴을 캐시에서 가져오거나 컴파일"""
         cache_key = f"{keyword}_{flags}"
@@ -287,6 +306,9 @@ class SearchEngine:
             if not results:
                 return False
             
+            # 중복되지 않는 파일명 생성
+            unique_output_file = self._generate_unique_filename(output_file)
+            
             # 데이터 변환을 최적화
             data = [
                 [result.file_path, result.file_name, result.line_number, 
@@ -295,7 +317,12 @@ class SearchEngine:
             ]
             
             df = pd.DataFrame(data, columns=["File Path", "File Name", "Line", "Content", "Match"])
-            df.to_excel(output_file, index=False, engine='openpyxl')
+            df.to_excel(unique_output_file, index=False, engine='openpyxl')
+            
+            # 실제 저장된 파일 경로 반환을 위해 output_file 업데이트
+            if unique_output_file != output_file:
+                print(f"파일명이 중복되어 자동으로 변경되었습니다: {Path(output_file).name} → {Path(unique_output_file).name}")
+            
             return True
             
         except Exception as e:

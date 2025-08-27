@@ -463,10 +463,46 @@ class JavaSearchApp:
         )
         
         if file_path:
+            # 파일명 중복 확인 및 자동 변경
+            original_filename = Path(file_path).name
             if self.search_engine.export_to_excel(self.search_results, file_path):
-                messagebox.showinfo("내보내기 완료", f"결과가 성공적으로 저장되었습니다:\n{file_path}")
+                # 실제 저장된 파일 경로 확인
+                actual_file_path = self._get_actual_saved_file_path(file_path)
+                if actual_file_path != file_path:
+                    messagebox.showinfo("내보내기 완료", 
+                        f"파일명이 중복되어 자동으로 변경되었습니다:\n"
+                        f"원본: {original_filename}\n"
+                        f"변경: {Path(actual_file_path).name}\n\n"
+                        f"저장 위치: {actual_file_path}")
+                else:
+                    messagebox.showinfo("내보내기 완료", f"결과가 성공적으로 저장되었습니다:\n{file_path}")
             else:
                 messagebox.showerror("오류", "Excel 파일 저장 중 오류가 발생했습니다.")
+    
+    def _get_actual_saved_file_path(self, original_path: str) -> str:
+        """실제로 저장된 파일 경로를 찾습니다"""
+        path = Path(original_path)
+        if path.exists():
+            return str(path)
+        
+        # 파일명이 자동으로 변경되었을 가능성 확인
+        stem = path.stem
+        suffix = path.suffix
+        parent = path.parent
+        
+        counter = 1
+        while True:
+            new_filename = f"{stem}_{counter}{suffix}"
+            new_path = parent / new_filename
+            if new_path.exists():
+                return str(new_path)
+            counter += 1
+            # 무한 루프 방지 (최대 1000번까지 시도)
+            if counter > 1000:
+                break
+        
+        # 찾지 못한 경우 원본 경로 반환
+        return original_path
     
     def on_result_double_click(self, event):
         """결과 더블클릭"""

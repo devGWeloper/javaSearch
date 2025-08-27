@@ -155,3 +155,14 @@ search_results.xlsx
 # Temporary files
 temp/
 tmp/
+
+# Build and deployment files
+build*/
+dist*/
+deploy*/
+JavaSearchTool_*.zip
+JavaSearchTool_*.exe
+JavaSearchTool_*
+
+# Configuration files (user-specific)
+config.json
