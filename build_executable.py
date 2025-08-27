@@ -50,14 +50,21 @@ def build_executable(target_platform=None):
     if icon_path.exists():
         cmd.append(f"--icon={icon_path}")
     
-    # 크로스 플랫폼 빌드 옵션
-    if target_platform:
-        if target_platform == "windows":
-            cmd.extend(["--target-arch=x86_64"])
-            print("🪟 Windows용 실행 파일을 생성합니다...")
-        elif target_platform == "macos":
-            cmd.extend(["--target-arch=x86_64"])
+    # 크로스 플랫폼 빌드 옵션 (Windows에서만 사용)
+    if target_platform and target_platform == "windows":
+        print("🪟 Windows용 실행 파일을 생성합니다...")
+        # Windows에서는 x86_64 타겟 아키텍처 사용
+        cmd.extend(["--target-arch=x86_64"])
+    elif target_platform and target_platform == "macos":
+        print("🍎 macOS용 실행 파일을 생성합니다...")
+        # macOS에서는 현재 아키텍처 사용 (arm64 또는 x86_64)
+        # 타겟 아키텍처 옵션 제거하여 자동 감지
+    else:
+        # 현재 플랫폼 감지
+        if sys.platform.startswith('darwin'):
             print("🍎 macOS용 실행 파일을 생성합니다...")
+        else:
+            print("🪟 Windows용 실행 파일을 생성합니다...")
     
     print("PyInstaller로 실행 파일을 생성합니다...")
     print(f"명령어: {' '.join(cmd)}")
