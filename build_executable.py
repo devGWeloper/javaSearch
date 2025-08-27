@@ -41,6 +41,13 @@ def build_executable(target_platform=None):
         "--hidden-import=pandas",
         "--hidden-import=openpyxl",
         "--hidden-import=PIL",
+        "--hidden-import=src.gui.main_window",
+        "--hidden-import=src.gui.search_panel",
+        "--hidden-import=src.gui.results_panel",
+        "--hidden-import=src.gui.event_handlers",
+        "--hidden-import=src.gui.settings_manager",
+        "--hidden-import=src.core.search_engine",
+        "--hidden-import=src.core.config_manager",
         "--clean",                      # 임시 파일 정리
         str(main_file)
     ]
