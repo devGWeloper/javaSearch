@@ -5,10 +5,12 @@ from typing import Dict, Any, List
 
 
 class ConfigManager:
-    """설정 관리 클래스"""
+    """설정 관리 클래스 (최적화된 버전)"""
     
     def __init__(self, config_file: str = "config.json"):
         self.config_file = Path(config_file)
+        self._config = None  # 지연 로딩을 위한 캐시
+        self._config_loaded = False
         self.default_config = {
             "search_directory": "",
             "keyword": "",
@@ -24,7 +26,14 @@ class ConfigManager:
             "window_geometry": "800x600+100+100",
             "theme": "dark"
         }
-        self.config = self.load_config()
+    
+    @property
+    def config(self) -> Dict[str, Any]:
+        """설정을 지연 로딩으로 가져옵니다."""
+        if not self._config_loaded:
+            self._config = self.load_config()
+            self._config_loaded = True
+        return self._config
     
     def load_config(self) -> Dict[str, Any]:
         """설정 파일을 로드합니다."""

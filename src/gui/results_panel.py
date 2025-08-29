@@ -78,10 +78,8 @@ class ResultsPanel:
         self.results_tree.heading("content", text="내용")
         self.results_tree.heading("match", text="매칭")
         
-        self.results_tree.column("file", width=300, anchor="w")
-        self.results_tree.column("line", width=60, anchor="center")
-        self.results_tree.column("content", width=500, anchor="w")
-        self.results_tree.column("match", width=150, anchor="w")
+        # 반응형 컬럼 너비 설정
+        self.setup_responsive_columns()
         
         # 스크롤바
         scrollbar_y = ttk.Scrollbar(tree_frame, orient="vertical", command=self.results_tree.yview)
@@ -92,6 +90,50 @@ class ResultsPanel:
         self.results_tree.pack(side="left", fill="both", expand=True)
         scrollbar_y.pack(side="right", fill="y")
         scrollbar_x.pack(side="bottom", fill="x")
+        
+        # 트리뷰 크기 변경 이벤트 바인딩
+        tree_frame.bind("<Configure>", self.on_tree_resize)
+    
+    def setup_responsive_columns(self):
+        """반응형 컬럼 너비 설정"""
+        # 기본 컬럼 너비 (픽셀 단위)
+        base_widths = {
+            "file": 300,
+            "line": 60,
+            "content": 500,
+            "match": 150
+        }
+        
+        # 컬럼 너비 설정
+        self.results_tree.column("file", width=base_widths["file"], anchor="w", minwidth=200)
+        self.results_tree.column("line", width=base_widths["line"], anchor="center", minwidth=50)
+        self.results_tree.column("content", width=base_widths["content"], anchor="w", minwidth=300)
+        self.results_tree.column("match", width=base_widths["match"], anchor="w", minwidth=100)
+        
+        # 기본 너비 저장
+        self.base_column_widths = base_widths
+    
+    def on_tree_resize(self, event):
+        """트리뷰 크기 변경 시 컬럼 너비 조정"""
+        if event.widget == self.results_tree.master:
+            # 새로운 너비 계산
+            new_width = event.width - 20  # 스크롤바 공간 고려
+            
+            # 파일 컬럼: 전체의 30%
+            file_width = max(200, int(new_width * 0.3))
+            self.results_tree.column("file", width=file_width)
+            
+            # 라인 컬럼: 고정 너비
+            line_width = 60
+            self.results_tree.column("line", width=line_width)
+            
+            # 내용 컬럼: 전체의 50%
+            content_width = max(300, int(new_width * 0.5))
+            self.results_tree.column("content", width=content_width)
+            
+            # 매칭 컬럼: 전체의 20%
+            match_width = max(100, new_width - file_width - line_width - content_width)
+            self.results_tree.column("match", width=match_width)
     
     def setup_context_menu(self):
         """컨텍스트 메뉴 설정"""

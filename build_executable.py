@@ -30,27 +30,67 @@ def build_executable(target_platform=None):
         print("기존 배포 파일을 정리합니다...")
         shutil.rmtree(dist_dir)
     
-    # PyInstaller 명령어 구성
-    cmd = [
-        "pyinstaller",
-        "--onefile",                    # 단일 실행 파일로 생성
-        "--windowed",                   # GUI 모드 (콘솔 창 숨김)
-        "--name=JavaSearchTool",        # 실행 파일 이름
-        "--add-data=assets:assets",    # assets 폴더 포함
-        "--hidden-import=customtkinter",
-        "--hidden-import=pandas",
-        "--hidden-import=openpyxl",
-        "--hidden-import=PIL",
-        "--hidden-import=src.gui.main_window",
-        "--hidden-import=src.gui.search_panel",
-        "--hidden-import=src.gui.results_panel",
-        "--hidden-import=src.gui.event_handlers",
-        "--hidden-import=src.gui.settings_manager",
-        "--hidden-import=src.core.search_engine",
-        "--hidden-import=src.core.config_manager",
-        "--clean",                      # 임시 파일 정리
-        str(main_file)
-    ]
+    # Windows용 최적화 옵션
+    if target_platform == "windows":
+        print("🪟 Windows용 최적화된 실행 파일을 생성합니다...")
+        cmd = [
+            "pyinstaller",
+            "--onedir",                     # 폴더 형태로 생성 (더 빠른 시작)
+            "--windowed",                   # GUI 모드
+            "--name=JavaSearchTool",        # 실행 파일 이름
+            "--add-data=assets;assets",    # Windows 경로 구분자 사용
+            "--hidden-import=customtkinter",
+            "--hidden-import=pandas",
+            "--hidden-import=openpyxl",
+            "--hidden-import=PIL",
+            "--hidden-import=src.gui.main_window",
+            "--hidden-import=src.gui.search_panel",
+            "--hidden-import=src.gui.results_panel",
+            "--hidden-import=src.gui.event_handlers",
+            "--hidden-import=src.gui.settings_manager",
+            "--hidden-import=src.core.search_engine",
+            "--hidden-import=src.core.config_manager",
+            "--exclude-module=matplotlib",  # 불필요한 모듈 제외
+            "--exclude-module=numpy",       # pandas에서 자동으로 포함됨
+            "--exclude-module=scipy",       # 불필요한 모듈 제외
+            "--exclude-module=IPython",     # 불필요한 모듈 제외
+            "--exclude-module=jupyter",     # 불필요한 모듈 제외
+            "--exclude-module=tkinter.test", # 테스트 모듈 제외
+            "--exclude-module=unittest",    # 테스트 모듈 제외
+            "--strip",                      # 디버그 심볼 제거
+            "--optimize=2",                 # Python 최적화 레벨 2
+            "--clean",                      # 임시 파일 정리
+            str(main_file)
+        ]
+    else:
+        # 기본 PyInstaller 명령어 구성
+        cmd = [
+            "pyinstaller",
+            "--onedir",                     # --onefile 대신 --onedir 사용 (더 빠른 시작)
+            "--windowed",                   # GUI 모드 (콘솔 창 숨김)
+            "--name=JavaSearchTool",        # 실행 파일 이름
+            "--add-data=assets:assets",    # assets 폴더 포함
+            "--hidden-import=customtkinter",
+            "--hidden-import=pandas",
+            "--hidden-import=openpyxl",
+            "--hidden-import=PIL",
+            "--hidden-import=src.gui.main_window",
+            "--hidden-import=src.gui.search_panel",
+            "--hidden-import=src.gui.results_panel",
+            "--hidden-import=src.gui.event_handlers",
+            "--hidden-import=src.gui.settings_manager",
+            "--hidden-import=src.core.search_engine",
+            "--hidden-import=src.core.config_manager",
+            "--exclude-module=matplotlib",  # 불필요한 모듈 제외
+            "--exclude-module=numpy",       # pandas에서 자동으로 포함됨
+            "--exclude-module=scipy",       # 불필요한 모듈 제외
+            "--exclude-module=IPython",     # 불필요한 모듈 제외
+            "--exclude-module=jupyter",     # 불필요한 모듈 제외
+            "--strip",                      # 바이너리에서 디버그 심볼 제거
+            "--optimize=2",                 # Python 최적화 레벨 2
+            "--clean",                      # 임시 파일 정리
+            str(main_file)
+        ]
     
     # 아이콘 추가 (있는 경우)
     icon_path = project_root / "assets" / "icon.ico"

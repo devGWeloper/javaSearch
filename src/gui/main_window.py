@@ -27,7 +27,28 @@ class JavaSearchApp:
         # 메인 윈도우 생성
         self.root = ctk.CTk()
         self.root.title("Java Search Tool - Eclipse Style")
-        self.root.geometry("1200x800")
+        
+        # 화면 크기 가져오기
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # 윈도우 크기를 화면의 80%로 설정 (최소 크기 보장)
+        window_width = max(1400, int(screen_width * 0.8))
+        window_height = max(900, int(screen_height * 0.8))
+        
+        # 윈도우 크기 설정
+        self.root.geometry(f"{window_width}x{window_height}")
+        
+        # 윈도우를 화면 중앙에 위치
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        
+        # 윈도우 최소 크기 설정
+        self.root.minsize(1200, 800)
+        
+        # 윈도우 크기 조정 가능하도록 설정
+        self.root.resizable(True, True)
         
         # 아이콘 설정 (선택사항)
         try:
@@ -51,6 +72,9 @@ class JavaSearchApp:
         
         # 윈도우 닫기 이벤트
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # 윈도우 크기 변경 이벤트 바인딩
+        self.root.bind("<Configure>", self.on_window_resize)
     
     def setup_ui(self):
         """UI 구성"""
@@ -58,11 +82,19 @@ class JavaSearchApp:
         self.main_container = ctk.CTkFrame(self.root)
         self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # 검색 패널
-        self.search_panel = SearchPanel(self.main_container, self.config_manager)
+        # 검색 패널과 결과 패널을 분할할 수 있는 컨테이너
+        self.paned_container = ctk.CTkFrame(self.main_container)
+        self.paned_container.pack(fill="both", expand=True)
         
-        # 결과 패널
-        self.results_panel = ResultsPanel(self.main_container)
+        # 검색 패널 (상단, 고정 높이)
+        self.search_panel = SearchPanel(self.paned_container, self.config_manager)
+        
+        # 결과 패널 (하단, 확장 가능)
+        self.results_panel = ResultsPanel(self.paned_container)
+        
+        # 검색 패널과 결과 패널을 적절한 비율로 배치
+        self.search_panel.search_frame.pack(in_=self.paned_container, fill="x", side="top")
+        self.results_panel.results_frame.pack(in_=self.paned_container, fill="both", expand=True, side="bottom")
     
     def setup_event_handlers(self):
         """이벤트 핸들러 설정"""
@@ -87,6 +119,13 @@ class JavaSearchApp:
     def save_settings(self):
         """설정 저장"""
         self.ui_settings_manager.save_settings_from_ui(self.search_panel, self.root)
+    
+    def on_window_resize(self, event):
+        """윈도우 크기 변경 이벤트 처리"""
+        # 윈도우 크기 변경 시 UI 요소들의 크기 조정
+        if event.widget == self.root:
+            # 필요시 여기에 크기 변경 로직 추가
+            pass
     
     def on_closing(self):
         """윈도우 닫기"""

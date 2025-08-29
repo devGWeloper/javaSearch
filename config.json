@@ -4,11 +4,7 @@
   "use_regex": true,
   "case_sensitive": false,
   "whole_word": false,
-  "file_extensions": [
-    ".java",
-    ".xml",
-    ".properties"
-  ],
+  "file_extensions": [],
   "exclude_patterns": [
     "*/target/*",
     "*/build/*",
@@ -23,6 +19,6 @@
   "recent_directories": [
     "/Users/kimgiwoong/Desktop/Side"
   ],
-  "window_geometry": "1708x944+0+38",
+  "window_geometry": "1708x944+2+57",
   "theme": "dark"
 }

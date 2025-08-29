@@ -122,6 +122,18 @@ class SearchPanel:
         self.word_var = ctk.BooleanVar(value=False)
         self.word_check = ctk.CTkCheckBox(first_row, text="단어 단위 검색", variable=self.word_var)
         self.word_check.pack(side="left", padx=10)
+        
+        # 두 번째 줄 (반응형으로 추가)
+        second_row = ctk.CTkFrame(checkbox_frame)
+        second_row.pack(fill="x", pady=2)
+        
+        self.recursive_var = ctk.BooleanVar(value=True)
+        self.recursive_check = ctk.CTkCheckBox(second_row, text="하위 디렉토리 검색", variable=self.recursive_var)
+        self.recursive_check.pack(side="left", padx=10)
+        
+        self.binary_var = ctk.BooleanVar(value=False)
+        self.binary_check = ctk.CTkCheckBox(second_row, text="바이너리 파일 포함", variable=self.binary_var)
+        self.binary_check.pack(side="left", padx=10)
     
     def setup_extensions_frame(self, parent):
         """파일 확장자 프레임"""
@@ -156,15 +168,31 @@ class SearchPanel:
         advanced_input_frame = ctk.CTkFrame(advanced_frame)
         advanced_input_frame.pack(fill="x", padx=10, pady=(5,10))
         
-        ctk.CTkLabel(advanced_input_frame, text="파일 인코딩:").pack(side="left", padx=(5,5))
-        self.encoding_combo = ctk.CTkComboBox(advanced_input_frame, 
+        # 첫 번째 줄
+        first_adv_row = ctk.CTkFrame(advanced_input_frame)
+        first_adv_row.pack(fill="x", pady=2)
+        
+        ctk.CTkLabel(first_adv_row, text="파일 인코딩:").pack(side="left", padx=(5,5))
+        self.encoding_combo = ctk.CTkComboBox(first_adv_row, 
                                              values=["utf-8", "cp949", "euc-kr", "ascii"],
                                              width=100)
         self.encoding_combo.pack(side="left", padx=(5,10))
         
-        ctk.CTkLabel(advanced_input_frame, text="출력 파일:").pack(side="left", padx=(10,5))
-        self.output_entry = ctk.CTkEntry(advanced_input_frame, width=200)
+        ctk.CTkLabel(first_adv_row, text="출력 파일:").pack(side="left", padx=(10,5))
+        self.output_entry = ctk.CTkEntry(first_adv_row, width=200)
         self.output_entry.pack(side="left", padx=(5,10))
+        
+        # 두 번째 줄
+        second_adv_row = ctk.CTkFrame(advanced_input_frame)
+        second_adv_row.pack(fill="x", pady=2)
+        
+        ctk.CTkLabel(second_adv_row, text="최대 결과 수:").pack(side="left", padx=(5,5))
+        self.max_results_entry = ctk.CTkEntry(second_adv_row, width=100, placeholder_text="1000")
+        self.max_results_entry.pack(side="left", padx=(5,10))
+        
+        ctk.CTkLabel(second_adv_row, text="검색 깊이:").pack(side="left", padx=(10,5))
+        self.max_depth_entry = ctk.CTkEntry(second_adv_row, width=100, placeholder_text="10")
+        self.max_depth_entry.pack(side="left", padx=(5,10))
     
     def setup_button_frame(self):
         """버튼 프레임"""
@@ -200,10 +228,14 @@ class SearchPanel:
             'use_regex': self.regex_var.get(),
             'case_sensitive': self.case_var.get(),
             'whole_word': self.word_var.get(),
+            'recursive_search': self.recursive_var.get(),
+            'include_binary': self.binary_var.get(),
             'extensions': [ext.strip() for ext in self.extensions_entry.get().split(",") if ext.strip()],
             'exclude_patterns': [pattern.strip() for pattern in self.exclude_entry.get().split(",") if pattern.strip()],
             'encoding': self.encoding_combo.get(),
-            'output_file': self.output_entry.get().strip()
+            'output_file': self.output_entry.get().strip(),
+            'max_results': int(self.max_results_entry.get()) if self.max_results_entry.get().strip() else 1000,
+            'max_depth': int(self.max_depth_entry.get()) if self.max_depth_entry.get().strip() else 10
         }
     
     def set_search_config(self, config):
@@ -217,6 +249,8 @@ class SearchPanel:
         self.regex_var.set(config.get('use_regex', True))
         self.case_var.set(config.get('case_sensitive', False))
         self.word_var.set(config.get('whole_word', False))
+        self.recursive_var.set(config.get('recursive_search', True))
+        self.binary_var.set(config.get('include_binary', False))
         
         extensions = config.get('file_extensions', [".java", ".xml", ".properties"])
         self.extensions_entry.delete(0, tk.END)
@@ -229,6 +263,12 @@ class SearchPanel:
         self.encoding_combo.set(config.get('file_encoding', 'utf-8'))
         self.output_entry.delete(0, tk.END)
         self.output_entry.insert(0, config.get('output_file', 'search_results.xlsx'))
+        
+        self.max_results_entry.delete(0, tk.END)
+        self.max_results_entry.insert(0, str(config.get('max_results', 1000)))
+        
+        self.max_depth_entry.delete(0, tk.END)
+        self.max_depth_entry.insert(0, str(config.get('max_depth', 10)))
     
     def update_recent_combos(self, recent_searches, recent_directories):
         """최근 검색 콤보박스 업데이트"""
